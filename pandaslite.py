@@ -1,22 +1,33 @@
 from prettytable import PrettyTable
+from collections import OrderedDict
 import random
 import stats
 
 
 class GroupedDataFrame(object):
-    def __init__(self, name, df):
-        self.name = name
-        self.df = df
+    def __init__(self, names, dfs):
+        self.names = names
+        self.dfs = dfs
+
+    def __iter__(self):
+        for name, df in zip(self.names, self.dfs):
+            yield name, df
     
     def apply(self, func):
-        for k, v in self.df.d.items():
-            def f2(x):
-                try:
-                    return func(x)
-                except:
-                    return None
-            self.df.d[k] = map(f2, v)
-        return self.df
+        final_df = None
+        for df in self.dfs:
+            for k, v in df.d.items():
+                def f2(x):
+                    try:
+                        return func(x)
+                    except:
+                        return None
+                df.d[k] = map(f2, v)
+            if final_df:
+                final_df += df
+            else:
+                final_df = df
+        return final_df
 
 class DataFrame(object):
     def __init__(self, d, index=None):
@@ -32,7 +43,6 @@ class DataFrame(object):
         if index:
             for row in self.iterrows():
                 print row[index]
-            # print sorted(enumerate(self.iterrows(), key=lambda x: x[index]))
     
     def _to_prettytable(self):
         t = PrettyTable()
@@ -41,6 +51,9 @@ class DataFrame(object):
         for k, v in self.d.items():
             t.add_column(k, v)
         return t
+
+    def __repr__(self):
+        return str(self.head())
     
     def __str__(self):
         return str(self._to_prettytable())
@@ -111,8 +124,8 @@ class DataFrame(object):
             else:
                 groups[_group] += row[cols]
 
-        for name, data in groups.items():
-            yield GroupedDataFrame(name, data)
+        
+        return GroupedDataFrame(groups.keys(), groups.values())
 
     def apply(self, func):
         for k, v in self.d.items():
@@ -125,7 +138,7 @@ class DataFrame(object):
         return self
 
     def describe(self):
-        df = {"names": ["mean", "stdev", "count"]}
+        df = OrderedDict([("names", ["mean", "stdev", "count"])])
         for k, v in self.d.items():
             if stats.is_numeric(v)==False:
                 continue
@@ -148,15 +161,17 @@ print df.tail()
 print df.x
 print df.y
 
-
-for frame in df.groupby("z"):
+print "groupby iterator"
+for name, frame in df.groupby("z"):
     print frame.apply(lambda x: x*2)
 # df.groupby("z").apply(lambda x: x**2)
 
+print "groupby iterator"
 print "-"*80
-for frame in df.groupby(["z", "a"]):
+for name, frame in df.groupby(["z", "a"]):
     print frame.apply(lambda x: x*2)
 
+print "groupby one liner"
 print df.groupby("z").apply(lambda x: x**2)
 
 print df.describe()
