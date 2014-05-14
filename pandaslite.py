@@ -2,6 +2,22 @@ from prettytable import PrettyTable
 import random
 import stats
 
+
+class GroupedDataFrame(object):
+    def __init__(self, name, df):
+        self.name = name
+        self.df = df
+    
+    def apply(self, func):
+        for k, v in self.df.d.items():
+            def f2(x):
+                try:
+                    return func(x)
+                except:
+                    return None
+            self.df.d[k] = map(f2, v)
+        return self.df
+
 class DataFrame(object):
     def __init__(self, d, index=None):
         lens = None
@@ -96,7 +112,7 @@ class DataFrame(object):
                 groups[_group] += row[cols]
 
         for name, data in groups.items():
-            yield name, data
+            yield GroupedDataFrame(name, data)
 
     def apply(self, func):
         for k, v in self.d.items():
@@ -133,15 +149,15 @@ print df.x
 print df.y
 
 
-for name, frame in df.groupby("z"):
-    print name
+for frame in df.groupby("z"):
     print frame.apply(lambda x: x*2)
 # df.groupby("z").apply(lambda x: x**2)
 
 print "-"*80
-for name, frame in df.groupby(["z", "a"]):
-    print name
+for frame in df.groupby(["z", "a"]):
     print frame.apply(lambda x: x*2)
+
+print df.groupby("z").apply(lambda x: x**2)
 
 print df.describe()
 df = DataFrame({
