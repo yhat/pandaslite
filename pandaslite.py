@@ -3,7 +3,7 @@ import random
 import stats
 
 class DataFrame(object):
-    def __init__(self, d):
+    def __init__(self, d, index=None):
         lens = None
         for k,v in d.items():
             if lens:
@@ -12,14 +12,18 @@ class DataFrame(object):
             else:
                 lens = len(v)
         self.d = d
+        self.index = {}
+        if index:
+            for row in self.iterrows():
+                print row[index]
+            # print sorted(enumerate(self.iterrows(), key=lambda x: x[index]))
     
     def _to_prettytable(self):
-        t = PrettyTable(self.d.keys())
-        for i in range(len(self.d[self.d.keys()[0]])):
-            row = []
-            for k in self.d.keys():
-                row.append(self.d[k][i])
-            t.add_row(row)
+        t = PrettyTable()
+        for k, v in self.index.items():
+            t.add_column(k, v)
+        for k, v in self.d.items():
+            t.add_column(k, v)
         return t
     
     def __str__(self):
@@ -61,8 +65,8 @@ class DataFrame(object):
         return self.d.keys()
 
     def iterrows(self):
-        for i in range(len(df)):
-            yield df[i]
+        for i in range(len(self)):
+            yield self[i]
 
     def head(self, n=6):
         return self[range(0, n)]
@@ -118,7 +122,7 @@ df = DataFrame({
     "z": ["a" if i%2==0 else "b" for i in range(10)],
     "a": [random.choice(["x", "y"]) for i in range(10)],
     "b": [random.choice([None, "y"]) for i in range(10)]
-})
+}, index=['a'])
 print df
 print df.__str__()
 print df.__html__()
@@ -127,6 +131,7 @@ print df.head()
 print df.tail()
 print df.x
 print df.y
+
 
 for name, frame in df.groupby("z"):
     print name
@@ -139,3 +144,10 @@ for name, frame in df.groupby(["z", "a"]):
     print frame.apply(lambda x: x*2)
 
 print df.describe()
+df = DataFrame({
+    "x": range(10),
+    "y": range(10),
+    "z": ["a" if i%2==0 else "b" for i in range(10)],
+    "a": [random.choice(["x", "y"]) for i in range(10)],
+    "b": [random.choice([None, "y"]) for i in range(10)]
+}, index=['a'])
