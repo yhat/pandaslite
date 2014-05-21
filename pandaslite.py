@@ -6,7 +6,7 @@ import stats
 
 class GroupedDataFrame(object):
     def __init__(self, names, dfs):
-        self.names = names
+        self.names = sorted(names)
         self.dfs = dfs
 
     def __iter__(self):
@@ -23,14 +23,88 @@ class GroupedDataFrame(object):
                     except:
                         return None
                 df.d[k] = map(f2, v)
+            # remove keys
+            for group in self.names:
+                for k in list(group):
+                    continue
+                    del df.d[k]
             if final_df:
                 final_df += df
             else:
                 final_df = df
         return final_df
 
+class Series(object):
+    def __init__(self, x):
+        self.x = x
+    
+    def _to_prettytable(self):
+        t = PrettyTable()
+        t.add_column('value', self.x)
+        return t
+
+    def __repr__(self):
+        return str(self.head())
+    
+    def __str__(self):
+        return str(self._to_prettytable())
+    
+    def __html__(self):
+        return self._to_prettytable().get_html_string()
+
+    def __getitem__(self, idx):
+        if isinstance(idx, int):
+            idx = [idx]
+        newd = {}
+        newx = []
+        for i in idx:
+            newx.append(self.x[i])
+        return Series(newx)
+
+    def __add__(self, x2):
+        self.x = self.x + x2.x
+        return self
+
+    def __len__(self):
+        return len(self.x)
+
+    def size(self):
+        return len(self)
+
+    def iterrows(self):
+        for i in range(len(self)):
+            yield self[i]
+
+    def head(self, n=6):
+        n = min(n, len(self))
+        return self[range(0, n)]
+
+    def tail(self, n=6):
+        n = min(n, len(self))
+        return self[range(len(self)-n, len(self))]
+
+    def groupby(self, by):
+        return self
+
+    def apply(self, func):
+        self.x = map(func, self.x)
+        return self
+
+    def describe(self):
+        df = OrderedDict([("names", ["mean", "stdev", "count", "min", "max"])])
+        if stats.is_numeric(self.x)==False:
+            return
+        df['value'] = [stats.mean(self.x), stats.stdev(self.x), len([i for i in self.x if i is not None]),
+                min(self.x), max(self.x)]
+        return DataFrame(df)
+
+
 class DataFrame(object):
     def __init__(self, d, index=None):
+        self.index = {}
+        if index:
+            self.index = DataFrame({k: v for k, v in d.items() if k in index})
+
         lens = None
         for k,v in d.items():
             if lens:
@@ -39,15 +113,11 @@ class DataFrame(object):
             else:
                 lens = len(v)
         self.d = d
-        self.index = {}
-        if index:
-            for row in self.iterrows():
-                print row[index]
     
     def _to_prettytable(self):
         t = PrettyTable()
-        for k, v in self.index.items():
-            t.add_column(k, v)
+        # for k, v in self.index.items():
+        #     t.add_column(k, v)
         for k, v in self.d.items():
             t.add_column(k, v)
         return t
@@ -98,9 +168,11 @@ class DataFrame(object):
             yield self[i]
 
     def head(self, n=6):
+        n = min(n, len(self))
         return self[range(0, n)]
 
     def tail(self, n=6):
+        n = min(n, len(self))
         return self[range(len(self)-n, len(self))]
 
     def groupby(self, by):
@@ -111,7 +183,7 @@ class DataFrame(object):
         for k in by:
             keys[k] = sorted(list(set(self.d[k])))
         groups = {}
-        for row in df.iterrows():
+        for row in self.iterrows():
             _group = []
             for k, levels in keys.items():
                 for level in levels:
@@ -124,7 +196,6 @@ class DataFrame(object):
             else:
                 groups[_group] += row[cols]
 
-        
         return GroupedDataFrame(groups.keys(), groups.values())
 
     def apply(self, func):
@@ -138,11 +209,12 @@ class DataFrame(object):
         return self
 
     def describe(self):
-        df = OrderedDict([("names", ["mean", "stdev", "count"])])
+        df = OrderedDict([("names", ["mean", "stdev", "count", "min", "max"])])
         for k, v in self.d.items():
             if stats.is_numeric(v)==False:
                 continue
-            df[k] = [stats.mean(v), stats.stdev(v), len([i for i in v if i is not None])]
+            df[k] = [stats.mean(v), stats.stdev(v), len([i for i in v if i is not None]),
+                    min(v), max(v)]
         return DataFrame(df)
 
 df = DataFrame({
@@ -182,3 +254,7 @@ df = DataFrame({
     "a": [random.choice(["x", "y"]) for i in range(10)],
     "b": [random.choice([None, "y"]) for i in range(10)]
 }, index=['a'])
+
+
+s = Series(range(100))
+print s
