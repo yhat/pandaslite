@@ -62,6 +62,9 @@ class Series(object):
     def __add__(self, x2):
         return Series(self.x + x2.x)
 
+    def __eq__(self, x2):
+        return [ix==x2 for ix in self.x]
+
     def is_null(self):
         return self.apply(lambda x: x is None)
 
@@ -93,15 +96,51 @@ class Series(object):
         df = OrderedDict([("names", ["mean", "stdev", "count", "min", "max"])])
         if stats.is_numeric(self.x)==False:
             return
-        df['value'] = [stats.mean(self.x), stats.stdev(self.x), len([i for i in self.x if i is not None]),
+        df['value'] = [stats.mean(self.x), stats.stdev(self.x),
+                len([i for i in self.x if i is not None]),
                 min(self.x), max(self.x)]
         return DataFrame(df)
+    
+    def unique(self):
+        return list(set(self.x))
 
+    # Maths!
     def min(self):
         return min(self.x)
 
     def max(self):
         return max(self.x)
+    
+    def abs(self):
+        return map(abs, self.x)
+
+    def div(self, x):
+        return map(lambda d: d / x, self.x)
+    
+    def divide(self, x):
+        return self.div(x)
+
+    def fillna(self, method=None, value=None):
+        methods = { 'bfill', 'ffill', None }
+        if value:
+            return self.apply(lambda x: value if x is None else x)
+        elif method in methods:
+            if method=='ffill':
+                for i in range(1, len(self)):
+                    if self.x[i] is None:
+                        self.x[i] = self.x[i-1]
+                return self
+            elif method=='bfill':
+                for i in range(len(self) - 1, 0, -1):
+                    if self.x[i-1] is None:
+                        self.x[i-1] = self.x[i]
+                return self
+
+    def ffill(self):
+        return self.fillna(method='ffill')
+    
+    def bfill(self):
+        return self.fillna(method='bfill')
 
 
 class DataFrame(object):
@@ -137,9 +176,19 @@ class DataFrame(object):
     
     def _to_prettytable(self):
         t = PrettyTable()
-        # for k, v in self.index.items():
-        #     t.add_column(k, v)
+        if "index" in self.columns():
+            v = self['index']
+            display_v = []
+            for val in getattr(v, "x", v):
+                if val not in display_v:
+                    display_v.append(val)
+                else:
+                    display_v.append("")
+            t.add_column("index", display_v)
+
         for k, v in self.d.items():
+            if k=="index":
+                continue
             t.add_column(k, getattr(v, "x", v))
         return t
 
@@ -155,20 +204,23 @@ class DataFrame(object):
     def __getattr__(self, name):
         return self.d[name]
 
+    def __setitem__(self, key, value):
+        if isinstance(value, Series):
+            self.d[key] = value
+        elif isinstance(value, list):
+            self.d[key] = Series(value)
+        else:
+            self.d[key] = Series([value for _ in range(len(self))])
+        
     def __getitem__(self, idx):
         if isinstance(idx, str):
-            return Series(self.d[idx])
+            return self.d[idx]
         elif isinstance(idx, int):
             idx = [idx]
         elif isinstance(idx, list):
             if isinstance(idx[0], str):
                 return DataFrame({k: v for k, v in self.d.items() if k in idx})
-        newd = {}
-        for k, v in self.d.items():
-            newd[k] = []
-            for i in idx:
-                newd[k].append(v[i])
-        return DataFrame(newd)
+        return DataFrame({ k: self.d[k][idx] for k in self.columns() })
 
     def __add__(self, d2):
         for k,v in d2.d.items():
@@ -205,14 +257,14 @@ class DataFrame(object):
 
         keys = {}
         for k in by:
-            keys[k] = sorted(list(set(self.d[k])))
+            keys[k] = sorted(self[k].unique())
         groups = {}
         for row in self.iterrows():
             _group = []
             for k, levels in keys.items():
                 for level in levels:
-                    if level==row[k][0]:
-                        _group.append(row[k][0])
+                    if all(level==row[k]):
+                        _group.append(row[k].x[0])
             _group = tuple(_group)
             cols = [col for col in row.columns() if col not in by]
             if _group not in groups:
@@ -253,14 +305,10 @@ class GroupedDataFrame(object):
     
     def apply(self, func):
         final_df = None
-        for df in self.dfs:
+        for name, df in zip(self.names, self.dfs):
             for k, v in df.d.items():
-                def f2(x):
-                    try:
-                        return func(x)
-                    except:
-                        return None
-                df.d[k] = map(f2, v)
+                v.apply(func)
+            df['index'] = name
             # remove keys
             for group in self.names:
                 for k in list(group):
