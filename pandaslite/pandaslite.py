@@ -3,10 +3,38 @@ from collections import OrderedDict
 import random
 import stats
 from copy import deepcopy
+import csv
 
+
+def guess_type(x):
+    try:
+        return int(x)
+    except:
+        try:
+            return float(x)
+        except:
+            return x
+def trycast(dtype, x):
+    try:
+        return dtype(x)
+    except:
+        return None
 
 class Series(object):
     def __init__(self, x):
+        dtype = float
+        for i in x:
+            if isinstance(i, float):
+                continue
+            elif isinstance(i, int) and dtype not in (bool, str):
+                dtype = int
+            elif isinstance(i ,bool) and dtype not in (str):
+                dtype = bool
+            elif isinstance(i, str):
+                dtype = str
+                break
+        # TODO: get this working...
+        # self.x = map(lambda i: trycast(dtype, i), x)
         self.x = x
 
     def _to_prettytable(self):
@@ -84,17 +112,28 @@ class DataFrame(object):
             # self.index = DataFrame({k: v for k, v in d.items() if k in index})
 
         lens = None
-        for k,v in d.items():
-            if lens:
-                if len(v) != lens:
-                    raise Exception("Values must be same length")
-            else:
-                lens = len(v)
         self.d = {}
-        for k, v in d.items():
-            if isinstance(v, list):
-                v = Series(v)
-            self.d[k] = v
+        if isinstance(d, dict):
+            for k,v in d.items():
+                if lens:
+                    if len(v) != lens:
+                        raise Exception("Values must be same length")
+                else:
+                    lens = len(v)
+            for k, v in d.items():
+                if isinstance(v, list):
+                    v = Series(v)
+                self.d[k] = v
+        elif isinstance(d, list):
+            for row in d:
+                for k, v in row.items():
+                    if k not in self.d:
+                        self.d[k] = []
+                    self.d[k].append(v)
+            self = DataFrame(self.d)
+
+
+            
     
     def _to_prettytable(self):
         t = PrettyTable()
@@ -233,6 +272,19 @@ class GroupedDataFrame(object):
                 final_df = df
         return final_df
 
+def read_csv(f, sep=","):
+    data = []
+    columns = None
+    for line in csv.reader(open(f), delimiter=sep):
+        if columns is None:
+            columns = line
+            continue
+        data.append(dict(zip(columns, line)))
+    return DataFrame(data)
+
+def read_table(f, sep="\t"):
+    return read_csv(f, sep=sep)
+
 df = DataFrame({
     "x": range(10),
     "y": range(10),
@@ -285,3 +337,6 @@ print df.is_null()
 print df.x
 print df.describe()
 print s.is_null()
+
+
+print DataFrame([{"x": 1}, {"x": 2}, {"x": 3}, {"x": 10}])
