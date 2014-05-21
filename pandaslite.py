@@ -4,40 +4,10 @@ import random
 import stats
 
 
-class GroupedDataFrame(object):
-    def __init__(self, names, dfs):
-        self.names = sorted(names)
-        self.dfs = dfs
-
-    def __iter__(self):
-        for name, df in zip(self.names, self.dfs):
-            yield name, df
-    
-    def apply(self, func):
-        final_df = None
-        for df in self.dfs:
-            for k, v in df.d.items():
-                def f2(x):
-                    try:
-                        return func(x)
-                    except:
-                        return None
-                df.d[k] = map(f2, v)
-            # remove keys
-            for group in self.names:
-                for k in list(group):
-                    continue
-                    del df.d[k]
-            if final_df:
-                final_df += df
-            else:
-                final_df = df
-        return final_df
-
 class Series(object):
     def __init__(self, x):
         self.x = x
-    
+
     def _to_prettytable(self):
         t = PrettyTable()
         t.add_column('value', self.x)
@@ -55,7 +25,6 @@ class Series(object):
     def __getitem__(self, idx):
         if isinstance(idx, int):
             idx = [idx]
-        newd = {}
         newx = []
         for i in idx:
             newx.append(self.x[i])
@@ -64,6 +33,9 @@ class Series(object):
     def __add__(self, x2):
         self.x = self.x + x2.x
         return self
+
+    def is_null(self):
+        return self.apply(lambda x: x is None)
 
     def __len__(self):
         return len(self.x)
@@ -87,8 +59,7 @@ class Series(object):
         return self
 
     def apply(self, func):
-        self.x = map(func, self.x)
-        return self
+        return Series(map(func, self.x))
 
     def describe(self):
         df = OrderedDict([("names", ["mean", "stdev", "count", "min", "max"])])
@@ -98,12 +69,19 @@ class Series(object):
                 min(self.x), max(self.x)]
         return DataFrame(df)
 
+    def min(self):
+        return min(self.x)
+
+    def max(self):
+        return max(self.x)
+
 
 class DataFrame(object):
     def __init__(self, d, index=None):
         self.index = {}
         if index:
-            self.index = DataFrame({k: v for k, v in d.items() if k in index})
+            pass
+            # self.index = DataFrame({k: v for k, v in d.items() if k in index})
 
         lens = None
         for k,v in d.items():
@@ -112,14 +90,18 @@ class DataFrame(object):
                     raise Exception("Values must be same length")
             else:
                 lens = len(v)
-        self.d = d
+        self.d = {}
+        for k, v in d.items():
+            if isinstance(v, list):
+                v = Series(v)
+            self.d[k] = v
     
     def _to_prettytable(self):
         t = PrettyTable()
         # for k, v in self.index.items():
         #     t.add_column(k, v)
         for k, v in self.d.items():
-            t.add_column(k, v)
+            t.add_column(k, getattr(v, "x", v))
         return t
 
     def __repr__(self):
@@ -132,11 +114,11 @@ class DataFrame(object):
         return self._to_prettytable().get_html_string()
 
     def __getattr__(self, name):
-        return DataFrame({ name: self.d[name] })
+        return self.d[name]
 
     def __getitem__(self, idx):
         if isinstance(idx, str):
-            return self.d[idx]
+            return Series(self.d[idx])
         elif isinstance(idx, int):
             idx = [idx]
         elif isinstance(idx, list):
@@ -162,6 +144,9 @@ class DataFrame(object):
 
     def columns(self):
         return self.d.keys()
+
+    def is_null(self):
+        return DataFrame({k: v.is_null() for k, v in self.d.items() })
 
     def iterrows(self):
         for i in range(len(self)):
@@ -205,17 +190,48 @@ class DataFrame(object):
                     return func(x)
                 except:
                     return None
-            self.d[k] = map(f2, v)
+            self.d[k] = v.apply(f2)
         return self
 
     def describe(self):
         df = OrderedDict([("names", ["mean", "stdev", "count", "min", "max"])])
         for k, v in self.d.items():
-            if stats.is_numeric(v)==False:
+            if stats.is_numeric(v.x)==False:
                 continue
-            df[k] = [stats.mean(v), stats.stdev(v), len([i for i in v if i is not None]),
-                    min(v), max(v)]
+            df[k] = [stats.mean(v.x), stats.stdev(v.x), len([i for i in v if i is not None]),
+                    v.min(), v.max()]
         return DataFrame(df)
+
+
+class GroupedDataFrame(object):
+    def __init__(self, names, dfs):
+        self.names = sorted(names)
+        self.dfs = dfs
+
+    def __iter__(self):
+        for name, df in zip(self.names, self.dfs):
+            yield name, df
+    
+    def apply(self, func):
+        final_df = None
+        for df in self.dfs:
+            for k, v in df.d.items():
+                def f2(x):
+                    try:
+                        return func(x)
+                    except:
+                        return None
+                df.d[k] = map(f2, v)
+            # remove keys
+            for group in self.names:
+                for k in list(group):
+                    continue
+                    del df.d[k]
+            if final_df:
+                final_df += df
+            else:
+                final_df = df
+        return final_df
 
 df = DataFrame({
     "x": range(10),
@@ -236,7 +252,7 @@ print df.y
 print "groupby iterator"
 for name, frame in df.groupby("z"):
     print frame.apply(lambda x: x*2)
-# df.groupby("z").apply(lambda x: x**2)
+df.groupby("z").apply(lambda x: x**2)
 
 print "groupby iterator"
 print "-"*80
@@ -257,4 +273,15 @@ df = DataFrame({
 
 
 s = Series(range(100))
-print s
+print s.head()
+
+print s.apply(lambda x: x**2)
+
+df = DataFrame({
+    "x": range(10),
+    "y": range(10)
+})
+print df.is_null()
+print df.x
+print df.describe()
+print s.is_null()
