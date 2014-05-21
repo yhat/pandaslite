@@ -2,6 +2,7 @@ from prettytable import PrettyTable
 from collections import OrderedDict
 import random
 import stats
+from copy import deepcopy
 
 
 class Series(object):
@@ -31,8 +32,7 @@ class Series(object):
         return Series(newx)
 
     def __add__(self, x2):
-        self.x = self.x + x2.x
-        return self
+        return Series(self.x + x2.x)
 
     def is_null(self):
         return self.apply(lambda x: x is None)
