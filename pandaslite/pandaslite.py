@@ -171,9 +171,6 @@ class DataFrame(object):
                     self.d[k].append(v)
             self = DataFrame(self.d)
 
-
-            
-    
     def _to_prettytable(self):
         t = PrettyTable()
         if "index" in self.columns():
@@ -186,7 +183,7 @@ class DataFrame(object):
                     display_v.append("")
             t.add_column("index", display_v)
 
-        for k, v in self.d.items():
+        for k, v in self:
             if k=="index":
                 continue
             t.add_column(k, getattr(v, "x", v))
@@ -200,6 +197,10 @@ class DataFrame(object):
     
     def __html__(self):
         return self._to_prettytable().get_html_string()
+
+    def __iter__(self):
+        for k,v in self.d.items():
+            yield k, v
 
     def __getattr__(self, name):
         return self.d[name]
@@ -219,8 +220,11 @@ class DataFrame(object):
             idx = [idx]
         elif isinstance(idx, list):
             if isinstance(idx[0], str):
-                return DataFrame({k: v for k, v in self.d.items() if k in idx})
+                return DataFrame({k: v for k, v in self if k in idx})
         return DataFrame({ k: self.d[k][idx] for k in self.columns() })
+
+    def __eq__(self, x):
+        return DataFrame({k: v==x for k,v in self})
 
     def __add__(self, d2):
         for k,v in d2.d.items():
@@ -237,7 +241,7 @@ class DataFrame(object):
         return self.d.keys()
 
     def is_null(self):
-        return DataFrame({k: v.is_null() for k, v in self.d.items() })
+        return DataFrame({k: v.is_null() for k, v in self })
 
     def iterrows(self):
         for i in range(len(self)):
@@ -275,7 +279,7 @@ class DataFrame(object):
         return GroupedDataFrame(groups.keys(), groups.values())
 
     def apply(self, func):
-        for k, v in self.d.items():
+        for k, v in self:
             def f2(x):
                 try:
                     return func(x)
@@ -286,10 +290,11 @@ class DataFrame(object):
 
     def describe(self):
         df = OrderedDict([("names", ["mean", "stdev", "count", "min", "max"])])
-        for k, v in self.d.items():
+        for k, v in self:
             if stats.is_numeric(v.x)==False:
                 continue
-            df[k] = [stats.mean(v.x), stats.stdev(v.x), len([i for i in v if i is not None]),
+            df[k] = [stats.mean(v.x), stats.stdev(v.x),
+                    len([i for i in v if i is not None]),
                     v.min(), v.max()]
         return DataFrame(df)
 

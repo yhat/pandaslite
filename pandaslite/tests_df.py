@@ -9,3 +9,4 @@ df = DataFrame({
 })
 
 print df.groupby(["a", "b", "z"]).apply(lambda x: x**2)
+print df==1
