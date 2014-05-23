@@ -1,5 +1,5 @@
 # pandaslite
-Like `pandas` but without any scary dependencies.
+Like `pandas` but in pure python.
 
 
 ```python
