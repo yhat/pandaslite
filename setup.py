@@ -8,6 +8,8 @@ setup(
     author_email="greg@yhathq.com",
     url="https://github.com/yhat/pandaslite",
     packages=find_packages(),
+    package_dir={"pandaslite": "pandaslite"},
+    package_data={"pandaslite": ["data/*.csv"]},
     description="Like pandas but witout the scary dependencies",
     license='BSD',
     long_description=open('README.rst').read(),
