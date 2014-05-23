@@ -1,9 +1,6 @@
 from prettytable import PrettyTable
 from collections import OrderedDict
-import random
 import stats
-from copy import deepcopy
-import csv
 
 
 def guess_type(x):
@@ -34,7 +31,7 @@ class Series(object):
             elif trycast(i, str):
                 dtype = str
                 break
-        self.x = map(lambda i: trycast(dtype, i), x)
+        # self.x = map(lambda i: trycast(dtype, i), x)
         self.x = x
         self.dtype = dtype
 
@@ -352,18 +349,4 @@ class GroupedDataFrame(object):
             else:
                 final_df = df
         return final_df
-
-# Utils...
-def read_csv(f, sep=","):
-    data = []
-    columns = None
-    for line in csv.reader(open(f), delimiter=sep):
-        if columns is None:
-            columns = line
-            continue
-        data.append(dict(zip(columns, line)))
-    return DataFrame(data)
-
-def read_table(f, sep="\t"):
-    return read_csv(f, sep=sep)
 
