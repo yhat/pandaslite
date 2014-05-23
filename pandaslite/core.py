@@ -332,8 +332,8 @@ class GroupedDataFrame(object):
     
     def apply(self, func):
         final_df = None
-        for name, df in zip(self.names, self.dfs):
-            for k, v in df.d.items():
+        for name, df in self:
+            for k, v in df:
                 v.apply(func)
             df['index'] = name
             # remove keys
