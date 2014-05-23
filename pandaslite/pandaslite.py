@@ -34,8 +34,9 @@ class Series(object):
                 dtype = str
                 break
         # TODO: get this working...
-        # self.x = map(lambda i: trycast(dtype, i), x)
+        self.x = map(lambda i: trycast(dtype, i), x)
         self.x = x
+        self.dtype = dtype
 
     def _to_prettytable(self):
         t = PrettyTable()
@@ -233,6 +234,9 @@ class DataFrame(object):
 
     def __len__(self):
         return len(self.d[self.d.keys()[0]])
+
+    def dtypes(self):
+        return DataFrame({"column": [k for k,v in self], "dtype": [v.dtype for k,v in self]})
 
     def size(self):
         return len(self)
