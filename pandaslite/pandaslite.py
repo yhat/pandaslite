@@ -14,6 +14,7 @@ def guess_type(x):
             return float(x)
         except:
             return x
+
 def trycast(dtype, x):
     try:
         return dtype(x)
@@ -24,16 +25,15 @@ class Series(object):
     def __init__(self, x):
         dtype = float
         for i in x:
-            if isinstance(i, float):
-                continue
-            elif isinstance(i, int) and dtype not in (bool, str):
+            if trycast(float, i) and dtype not in (int, bool, str):
+                dtype = float
+            elif trycast(int, i) and dtype not in (bool, str):
                 dtype = int
-            elif isinstance(i ,bool) and dtype not in (str):
+            elif trycast(bool, i) and dtype is not str:
                 dtype = bool
-            elif isinstance(i, str):
+            elif trycast(i, str):
                 dtype = str
                 break
-        # TODO: get this working...
         self.x = map(lambda i: trycast(dtype, i), x)
         self.x = x
         self.dtype = dtype
@@ -91,11 +91,11 @@ class Series(object):
 
     def head(self, n=6):
         n = min(n, len(self))
-        return self[range(0, n)]
+        return self[0:n]
 
     def tail(self, n=6):
         n = min(n, len(self))
-        return self[range(len(self)-n, len(self))]
+        return self[(len(self)-n):len(self)]
 
     def groupby(self, by):
         return self
@@ -163,6 +163,14 @@ class DataFrame(object):
 
         lens = None
         self.d = {}
+        if isinstance(d, list):
+            d2 = {}
+            for row in d:
+                for k, v in row.items():
+                    if k not in d2:
+                        d2[k] = []
+                    d2[k].append(v)
+            d = d2
         if isinstance(d, dict):
             for k,v in d.items():
                 if lens:
@@ -174,13 +182,6 @@ class DataFrame(object):
                 if isinstance(v, list):
                     v = Series(v)
                 self.d[k] = v
-        elif isinstance(d, list):
-            for row in d:
-                for k, v in row.items():
-                    if k not in self.d:
-                        self.d[k] = []
-                    self.d[k].append(v)
-            self = DataFrame(self.d)
 
     def _to_prettytable(self):
         t = PrettyTable()
@@ -248,10 +249,14 @@ class DataFrame(object):
         return self
 
     def __len__(self):
-        return len(self.d[self.d.keys()[0]])
+        first_col = self.columns()[0]
+        return len(self[first_col])
 
     def dtypes(self):
-        return DataFrame({"column": [k for k,v in self], "dtype": [v.dtype for k,v in self]})
+        return DataFrame({
+            "column": [k for k,v in self],
+            "dtype": [v.dtype for k,v in self]
+            })
 
     def size(self):
         return len(self)
@@ -268,11 +273,11 @@ class DataFrame(object):
 
     def head(self, n=6):
         n = min(n, len(self))
-        return self[range(0, n)]
+        return self[0:n]
 
     def tail(self, n=6):
         n = min(n, len(self))
-        return self[range(len(self)-n, len(self))]
+        return self[(len(self)-n):len(self)]
 
     def groupby(self, by):
         if isinstance(by, str):
@@ -348,6 +353,7 @@ class GroupedDataFrame(object):
                 final_df = df
         return final_df
 
+# Utils...
 def read_csv(f, sep=","):
     data = []
     columns = None

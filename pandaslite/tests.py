@@ -89,3 +89,13 @@ print df==1
 for c in df.columns():
     print c, df[c].dtype
 print df.dtypes()
+
+s = Series(range(10))
+print s[1:4]
+
+df = DataFrame({
+    "x": range(10),
+    "y": range(10)
+})
+
+print df[:4, :2]

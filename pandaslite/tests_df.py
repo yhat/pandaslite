@@ -1,12 +1,15 @@
 from pandaslite import *
 
 
-s = Series(range(10))
-print s[1:4]
+df = read_csv("./data/iris.csv")
+print df.head()
+print df.dtypes()
 
-df = DataFrame({
-    "x": range(10),
-    "y": range(10)
-})
+df = read_table("./data/iris.txt", sep="\t")
+print df.head()
+print df.dtypes()
 
-print df[:4, :2]
+df = read_csv("./data/iris.pipe", sep="|")
+print df.head()
+print df.dtypes()
+
