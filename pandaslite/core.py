@@ -13,25 +13,22 @@ def guess_type(x):
             return x
 
 def trycast(dtype, x):
-    try:
-        return dtype(x)
-    except:
+    if x is None:
         return None
+    else:
+        return dtype(x)
 
 class Series(object):
     def __init__(self, x):
+        # this is broken
         dtype = float
-        for i in x:
-            if trycast(float, i) and dtype not in (int, bool, str):
-                dtype = float
-            elif trycast(int, i) and dtype not in (bool, str):
-                dtype = int
-            elif trycast(bool, i) and dtype is not str:
-                dtype = bool
-            elif trycast(i, str):
-                dtype = str
+
+        for dtype in [float, int, str]:
+            try:
+                x = map(lambda i: trycast(dtype, i), x)
                 break
-        # self.x = map(lambda i: trycast(dtype, i), x)
+            except:
+                pass
         self.x = x
         self.dtype = dtype
 
