@@ -55,10 +55,17 @@ class Series(object):
     def __getitem__(self, idx):
         if isinstance(idx, int):
             idx = [idx]
-        newx = []
-        for i in idx:
-            newx.append(self.x[i])
-        return Series(newx)
+        elif isinstance(idx, slice):
+            return Series(self.x[idx])
+        else:
+            newx = []
+            for i in idx:
+                newx.append(self.x[i])
+            return Series(newx)
+
+    def __iter__(self):
+        for i in self.x:
+            yield i
 
     def __add__(self, x2):
         return Series(self.x + x2.x)
@@ -79,6 +86,9 @@ class Series(object):
         for i in range(len(self)):
             yield self[i]
 
+    def ix(self, idx):
+        return self[idx]
+
     def head(self, n=6):
         n = min(n, len(self))
         return self[range(0, n)]
@@ -98,7 +108,7 @@ class Series(object):
         if stats.is_numeric(self.x)==False:
             return
         df['value'] = [stats.mean(self.x), stats.stdev(self.x),
-                len([i for i in self.x if i is not None]),
+                len([i for i in self if i is not None]),
                 min(self.x), max(self.x)]
         return DataFrame(df)
     
@@ -222,6 +232,11 @@ class DataFrame(object):
         elif isinstance(idx, list):
             if isinstance(idx[0], str):
                 return DataFrame({k: v for k, v in self if k in idx})
+        elif isinstance(idx, slice):
+            return DataFrame({ k: self.d[k][idx] for k in self.columns() })
+        elif isinstance(idx, tuple):
+            row_idx, col_idx = idx
+            return DataFrame({ k: self.d[k][row_idx] for k in self.columns()[col_idx] })
         return DataFrame({ k: self.d[k][idx] for k in self.columns() })
 
     def __eq__(self, x):
@@ -297,9 +312,13 @@ class DataFrame(object):
         for k, v in self:
             if stats.is_numeric(v.x)==False:
                 continue
-            df[k] = [stats.mean(v.x), stats.stdev(v.x),
-                    len([i for i in v if i is not None]),
-                    v.min(), v.max()]
+            df[k] = [
+                stats.mean(v.x),
+                stats.stdev(v.x),
+                len([i for i in v if i is not None]),
+                v.min(),
+                v.max()
+            ]
         return DataFrame(df)
 
 
