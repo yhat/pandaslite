@@ -1,4 +1,5 @@
 from pandaslite import *
+import random
 
 df = DataFrame({
     "x": range(10),
